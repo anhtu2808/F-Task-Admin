@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Modal, Form, Input, Select, DatePicker, message, Space, Tag } from 'antd'
+import { Table, Button, Modal, Form, Input, Select, DatePicker, message, Space, Tag, InputNumber } from 'antd'
 import { EyeOutlined } from '@ant-design/icons'
-import { bookingService } from '../api/services/bookingService'
+import { adminBookingService } from '../api/services/adminBookingService'
 import dayjs from 'dayjs'
 
 const { RangePicker } = DatePicker
@@ -10,18 +10,37 @@ const Bookings = () => {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
+  const [statusModalVisible, setStatusModalVisible] = useState(false)
+  const [refundModalVisible, setRefundModalVisible] = useState(false)
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
   const [filters, setFilters] = useState({
     status: undefined,
-    fromDate: undefined,
-    toDate: undefined,
+    customerId: undefined,
+    partnerId: undefined,
+    serviceCatalogId: undefined,
+    variantId: undefined,
+    customerName: undefined,
+    partnerName: undefined,
+    serviceName: undefined,
+    startDateFrom: undefined,
+    startDateTo: undefined,
+    createdFrom: undefined,
+    createdTo: undefined,
+    minPrice: undefined,
+    maxPrice: undefined,
+    district: undefined,
+    isCustomerAccepted: undefined,
   })
+  const [sortBy, setSortBy] = useState(null)
+  const [sortDirection, setSortDirection] = useState(null)
   const [form] = Form.useForm()
+  const [statusForm] = Form.useForm()
+  const [refundForm] = Form.useForm()
 
   useEffect(() => {
     loadBookings()
-  }, [pagination.current, pagination.pageSize, filters])
+  }, [pagination.current, pagination.pageSize, filters, sortBy, sortDirection])
 
   const loadBookings = async () => {
     setLoading(true)
@@ -29,16 +48,67 @@ const Bookings = () => {
       const params = {
         page: pagination.current,
         size: pagination.pageSize,
-        ...filters,
-      }
-      if (filters.fromDate) {
-        params.fromDate = filters.fromDate.toISOString()
-      }
-      if (filters.toDate) {
-        params.toDate = filters.toDate.toISOString()
       }
       
-      const response = await bookingService.getBookings(params)
+      // Only add sortBy and sortDirection if they have values
+      if (sortBy) {
+        params.sortBy = sortBy
+      }
+      if (sortDirection) {
+        params.sortDirection = sortDirection
+      }
+      
+      // Only add filters that have values (not undefined, null, or empty string)
+      if (filters.status) {
+        params.status = filters.status
+      }
+      if (filters.customerId) {
+        params.customerId = filters.customerId
+      }
+      if (filters.partnerId) {
+        params.partnerId = filters.partnerId
+      }
+      if (filters.serviceCatalogId) {
+        params.serviceCatalogId = filters.serviceCatalogId
+      }
+      if (filters.variantId) {
+        params.variantId = filters.variantId
+      }
+      if (filters.customerName) {
+        params.customerName = filters.customerName
+      }
+      if (filters.partnerName) {
+        params.partnerName = filters.partnerName
+      }
+      if (filters.serviceName) {
+        params.serviceName = filters.serviceName
+      }
+      if (filters.startDateFrom) {
+        params.startDateFrom = filters.startDateFrom.toISOString()
+      }
+      if (filters.startDateTo) {
+        params.startDateTo = filters.startDateTo.toISOString()
+      }
+      if (filters.createdFrom) {
+        params.createdFrom = filters.createdFrom.toISOString()
+      }
+      if (filters.createdTo) {
+        params.createdTo = filters.createdTo.toISOString()
+      }
+      if (filters.minPrice !== undefined && filters.minPrice !== null) {
+        params.minPrice = filters.minPrice
+      }
+      if (filters.maxPrice !== undefined && filters.maxPrice !== null) {
+        params.maxPrice = filters.maxPrice
+      }
+      if (filters.district) {
+        params.district = filters.district
+      }
+      if (filters.isCustomerAccepted !== undefined && filters.isCustomerAccepted !== null) {
+        params.isCustomerAccepted = filters.isCustomerAccepted
+      }
+      
+      const response = await adminBookingService.getAllBookings(params)
       if (response.code === 200 && response.result) {
         setBookings(response.result.content || [])
         setPagination({
@@ -48,6 +118,7 @@ const Bookings = () => {
       }
     } catch (error) {
       console.error('Failed to load bookings:', error)
+      message.error('Không thể tải danh sách bookings!')
     } finally {
       setLoading(false)
     }
@@ -55,7 +126,7 @@ const Bookings = () => {
 
   const handleView = async (id) => {
     try {
-      const response = await bookingService.getBooking(id)
+      const response = await adminBookingService.getBookingById(id)
       if (response.code === 200 && response.result) {
         setSelectedBooking(response.result)
         setModalVisible(true)
@@ -65,16 +136,47 @@ const Bookings = () => {
     }
   }
 
+  const handleUpdateStatus = async (values) => {
+    try {
+      const response = await adminBookingService.updateBookingStatus(selectedBooking.id, values)
+      if (response.code === 200) {
+        message.success('Cập nhật status booking thành công!')
+        setStatusModalVisible(false)
+        setSelectedBooking(null)
+        statusForm.resetFields()
+        loadBookings()
+      }
+    } catch (error) {
+      message.error('Cập nhật status thất bại!')
+    }
+  }
+
   const handleCancel = async (values) => {
     try {
-      const response = await bookingService.cancelBooking(selectedBooking.id, values.reason)
+      const response = await adminBookingService.cancelBooking(selectedBooking.id, values)
       if (response.code === 200) {
         message.success('Hủy booking thành công!')
         setModalVisible(false)
+        setSelectedBooking(null)
         loadBookings()
       }
     } catch (error) {
       message.error('Hủy booking thất bại!')
+    }
+  }
+
+  const handleRefund = async (values) => {
+    try {
+      const response = await adminBookingService.refundBooking(selectedBooking.id, values)
+      if (response.code === 200) {
+        message.success('Refund booking thành công!')
+        setRefundModalVisible(false)
+        setSelectedBooking(null)
+        refundForm.resetFields()
+        loadBookings()
+      }
+    } catch (error) {
+      message.error('Refund booking thất bại!')
     }
   }
 
@@ -83,12 +185,33 @@ const Bookings = () => {
     setPagination({ ...pagination, current: 1 })
   }
 
-  const handleTableChange = (pagination) => {
+  const handleTableChange = (pagination, tableFilters, sorter) => {
     setPagination({
       current: pagination.current,
       pageSize: pagination.pageSize,
       total: pagination.total,
     })
+    
+    if (sorter.field && sorter.order) {
+      setSortBy(sorter.field)
+      setSortDirection(sorter.order === 'ascend' ? 'asc' : 'desc')
+    } else {
+      // Reset sorting when user clears sort
+      setSortBy(null)
+      setSortDirection(null)
+    }
+  }
+
+  const handleOpenStatusModal = (booking) => {
+    setSelectedBooking(booking)
+    statusForm.setFieldsValue({ status: booking.status })
+    setStatusModalVisible(true)
+  }
+
+  const handleOpenRefundModal = (booking) => {
+    setSelectedBooking(booking)
+    refundForm.setFieldsValue({ refundAmount: booking.totalPrice })
+    setRefundModalVisible(true)
   }
 
   const getStatusTag = (status) => {
@@ -142,9 +265,24 @@ const Bookings = () => {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
-        <Button icon={<EyeOutlined />} onClick={() => handleView(record.id)}>
-          View
-        </Button>
+        <Space>
+          <Button icon={<EyeOutlined />} onClick={() => handleView(record.id)}>
+            View
+          </Button>
+          <Button onClick={() => handleOpenStatusModal(record)}>
+            Update Status
+          </Button>
+          {record.status !== 'CANCELLED' && (
+            <Button danger onClick={() => handleCancel({ reason: 'Admin cancellation' })}>
+              Cancel
+            </Button>
+          )}
+          {record.status === 'COMPLETED' && (
+            <Button type="primary" onClick={() => handleOpenRefundModal(record)}>
+              Refund
+            </Button>
+          )}
+        </Space>
       ),
     },
   ]
@@ -155,10 +293,31 @@ const Bookings = () => {
         <h1>Bookings</h1>
       </div>
 
-      <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
+      <div style={{ marginBottom: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        <Input
+          placeholder="Customer Name"
+          style={{ width: 150 }}
+          value={filters.customerName}
+          onChange={(e) => handleFilterChange('customerName', e.target.value)}
+          allowClear
+        />
+        <Input
+          placeholder="Partner Name"
+          style={{ width: 150 }}
+          value={filters.partnerName}
+          onChange={(e) => handleFilterChange('partnerName', e.target.value)}
+          allowClear
+        />
+        <Input
+          placeholder="Service Name"
+          style={{ width: 150 }}
+          value={filters.serviceName}
+          onChange={(e) => handleFilterChange('serviceName', e.target.value)}
+          allowClear
+        />
         <Select
-          placeholder="Filter by Status"
-          style={{ width: 200 }}
+          placeholder="Status"
+          style={{ width: 150 }}
           allowClear
           value={filters.status}
           onChange={(value) => handleFilterChange('status', value)}
@@ -171,12 +330,57 @@ const Bookings = () => {
           <Select.Option value="COMPLETED">Completed</Select.Option>
           <Select.Option value="CANCELLED">Cancelled</Select.Option>
         </Select>
+        <InputNumber
+          placeholder="Min Price"
+          style={{ width: 120 }}
+          min={0}
+          value={filters.minPrice}
+          onChange={(value) => handleFilterChange('minPrice', value)}
+        />
+        <InputNumber
+          placeholder="Max Price"
+          style={{ width: 120 }}
+          min={0}
+          value={filters.maxPrice}
+          onChange={(value) => handleFilterChange('maxPrice', value)}
+        />
         <RangePicker
+          placeholder={['Start Date From', 'Start Date To']}
           onChange={(dates) => {
-            handleFilterChange('fromDate', dates?.[0])
-            handleFilterChange('toDate', dates?.[1])
+            handleFilterChange('startDateFrom', dates?.[0])
+            handleFilterChange('startDateTo', dates?.[1])
           }}
         />
+        <RangePicker
+          placeholder={['Created From', 'Created To']}
+          onChange={(dates) => {
+            handleFilterChange('createdFrom', dates?.[0])
+            handleFilterChange('createdTo', dates?.[1])
+          }}
+        />
+        <Button onClick={() => {
+          setFilters({
+            status: undefined,
+            customerId: undefined,
+            partnerId: undefined,
+            serviceCatalogId: undefined,
+            variantId: undefined,
+            customerName: undefined,
+            partnerName: undefined,
+            serviceName: undefined,
+            startDateFrom: undefined,
+            startDateTo: undefined,
+            createdFrom: undefined,
+            createdTo: undefined,
+            minPrice: undefined,
+            maxPrice: undefined,
+            district: undefined,
+            isCustomerAccepted: undefined,
+          })
+          setPagination({ ...pagination, current: 1 })
+        }}>
+          Clear Filters
+        </Button>
       </div>
 
       <Table
@@ -212,20 +416,81 @@ const Bookings = () => {
             <p><strong>Method:</strong> {selectedBooking.method}</p>
             <p><strong>Customer Note:</strong> {selectedBooking.customerNote || '-'}</p>
             
-            {selectedBooking.status === 'PENDING' && (
-              <Form form={form} onFinish={handleCancel} style={{ marginTop: 16 }}>
-                <Form.Item name="reason" label="Cancel Reason" rules={[{ required: true }]}>
-                  <Input.TextArea rows={4} />
-                </Form.Item>
-                <Form.Item>
-                  <Button type="primary" danger htmlType="submit">
+            <div style={{ marginTop: 16 }}>
+              <Space>
+                <Button onClick={() => handleOpenStatusModal(selectedBooking)}>
+                  Update Status
+                </Button>
+                {selectedBooking.status !== 'CANCELLED' && (
+                  <Button danger onClick={() => handleCancel({ reason: 'Admin cancellation' })}>
                     Cancel Booking
                   </Button>
-                </Form.Item>
-              </Form>
-            )}
+                )}
+                {selectedBooking.status === 'COMPLETED' && (
+                  <Button type="primary" onClick={() => handleOpenRefundModal(selectedBooking)}>
+                    Refund
+                  </Button>
+                )}
+              </Space>
+            </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        title="Update Booking Status"
+        open={statusModalVisible}
+        onCancel={() => {
+          setStatusModalVisible(false)
+          setSelectedBooking(null)
+          statusForm.resetFields()
+        }}
+        onOk={() => statusForm.submit()}
+        width={500}
+      >
+        <Form form={statusForm} layout="vertical" onFinish={handleUpdateStatus}>
+          <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+            <Select>
+              <Select.Option value="WAITING_FOR_PAYMENT">Waiting for Payment</Select.Option>
+              <Select.Option value="PENDING">Pending</Select.Option>
+              <Select.Option value="PARTIALLY_ACCEPTED">Partially Accepted</Select.Option>
+              <Select.Option value="FULLY_ACCEPTED">Fully Accepted</Select.Option>
+              <Select.Option value="IN_PROGRESS">In Progress</Select.Option>
+              <Select.Option value="COMPLETED">Completed</Select.Option>
+              <Select.Option value="CANCELLED">Cancelled</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="reason" label="Reason (optional)">
+            <Input.TextArea rows={4} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Refund Booking"
+        open={refundModalVisible}
+        onCancel={() => {
+          setRefundModalVisible(false)
+          setSelectedBooking(null)
+          refundForm.resetFields()
+        }}
+        onOk={() => refundForm.submit()}
+        width={500}
+      >
+        <Form form={refundForm} layout="vertical" onFinish={handleRefund}>
+          <Form.Item name="refundAmount" label="Refund Amount" rules={[{ required: true, min: 0 }]}>
+            <InputNumber
+              style={{ width: '100%' }}
+              min={0}
+              max={selectedBooking?.totalPrice}
+              formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              parser={(value) => value.replace(/\$\s?|(,*)/g, '')}
+            />
+          </Form.Item>
+          <Form.Item name="reason" label="Reason (optional)">
+            <Input.TextArea rows={4} />
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   )

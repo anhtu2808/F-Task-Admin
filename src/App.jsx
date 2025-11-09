@@ -8,6 +8,7 @@ import ServiceCatalogs from './pages/ServiceCatalogs'
 import ServiceVariants from './pages/ServiceVariants'
 import Bookings from './pages/Bookings'
 import Partners from './pages/Partners'
+import Users from './pages/Users'
 import Reviews from './pages/Reviews'
 import Transactions from './pages/Transactions'
 import Districts from './pages/Districts'
@@ -75,6 +76,16 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Partners />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Users />
                 </MainLayout>
               </ProtectedRoute>
             }

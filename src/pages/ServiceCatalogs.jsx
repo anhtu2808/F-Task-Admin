@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Modal, Form, Input, InputNumber, Switch, message, Popconfirm, Space, Drawer, Descriptions } from 'antd'
+import { Table, Button, Modal, Form, Input, InputNumber, Switch, message, Popconfirm, Space, Drawer, Descriptions, Select, DatePicker } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons'
-import { serviceCatalogService } from '../api/services/serviceCatalogService'
+import { adminServiceCatalogService } from '../api/services/adminServiceCatalogService'
 import ServiceCatalogVariants from '../components/ServiceCatalogVariants'
+import dayjs from 'dayjs'
+
+const { RangePicker } = DatePicker
 
 const ServiceCatalogs = () => {
   const [catalogs, setCatalogs] = useState([])
@@ -11,21 +14,70 @@ const ServiceCatalogs = () => {
   const [drawerVisible, setDrawerVisible] = useState(false)
   const [editingCatalog, setEditingCatalog] = useState(null)
   const [selectedCatalog, setSelectedCatalog] = useState(null)
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
+  const [filters, setFilters] = useState({
+    name: undefined,
+    isActive: undefined,
+    minPlatformFeePercent: undefined,
+    maxPlatformFeePercent: undefined,
+    createdFrom: undefined,
+    createdTo: undefined,
+  })
+  const [sortBy, setSortBy] = useState(null)
+  const [sortDirection, setSortDirection] = useState(null)
   const [form] = Form.useForm()
 
   useEffect(() => {
     loadCatalogs()
-  }, [])
+  }, [pagination.current, pagination.pageSize, filters, sortBy, sortDirection])
 
   const loadCatalogs = async () => {
     setLoading(true)
     try {
-      const response = await serviceCatalogService.getAll()
+      const params = {
+        page: pagination.current - 1, // Convert from 1-based (frontend) to 0-based (backend)
+        size: pagination.pageSize,
+      }
+      
+      // Only add sortBy and sortDirection if they have values
+      if (sortBy) {
+        params.sortBy = sortBy
+      }
+      if (sortDirection) {
+        params.sortDirection = sortDirection
+      }
+      
+      // Only add filters that have values (not undefined, null, or empty string)
+      if (filters.name) {
+        params.name = filters.name
+      }
+      if (filters.isActive !== undefined && filters.isActive !== null) {
+        params.isActive = filters.isActive
+      }
+      if (filters.minPlatformFeePercent !== undefined && filters.minPlatformFeePercent !== null) {
+        params.minPlatformFeePercent = filters.minPlatformFeePercent
+      }
+      if (filters.maxPlatformFeePercent !== undefined && filters.maxPlatformFeePercent !== null) {
+        params.maxPlatformFeePercent = filters.maxPlatformFeePercent
+      }
+      if (filters.createdFrom) {
+        params.createdFrom = filters.createdFrom.toISOString()
+      }
+      if (filters.createdTo) {
+        params.createdTo = filters.createdTo.toISOString()
+      }
+
+      const response = await adminServiceCatalogService.getAllServiceCatalogs(params)
       if (response.code === 200 && response.result) {
-        setCatalogs(response.result)
+        setCatalogs(response.result.content || [])
+        setPagination({
+          ...pagination,
+          total: response.result.totalElements || 0,
+        })
       }
     } catch (error) {
       console.error('Failed to load catalogs:', error)
+      message.error('Không thể tải danh sách service catalogs!')
     } finally {
       setLoading(false)
     }
@@ -45,7 +97,7 @@ const ServiceCatalogs = () => {
 
   const handleDelete = async (id) => {
     try {
-      const response = await serviceCatalogService.delete(id)
+      const response = await adminServiceCatalogService.deleteServiceCatalog(id)
       if (response.code === 200) {
         message.success('Xóa service catalog thành công!')
         loadCatalogs()
@@ -57,7 +109,7 @@ const ServiceCatalogs = () => {
 
   const handleViewDetails = async (catalog) => {
     try {
-      const response = await serviceCatalogService.getById(catalog.id)
+      const response = await adminServiceCatalogService.getServiceCatalogById(catalog.id)
       if (response.code === 200 && response.result) {
         setSelectedCatalog(response.result)
         setDrawerVisible(true)
@@ -70,15 +122,15 @@ const ServiceCatalogs = () => {
   const handleSubmit = async (values) => {
     try {
       if (editingCatalog) {
-        const response = await serviceCatalogService.update(editingCatalog.id, values)
+        const response = await adminServiceCatalogService.updateServiceCatalog(editingCatalog.id, values)
         if (response.code === 200) {
           message.success('Cập nhật service catalog thành công!')
           setModalVisible(false)
           loadCatalogs()
         }
       } else {
-        const response = await serviceCatalogService.create(values)
-        if (response.code === 200) {
+        const response = await adminServiceCatalogService.createServiceCatalog(values)
+        if (response.code === 200 || response.code === 201) {
           message.success('Tạo service catalog thành công!')
           setModalVisible(false)
           loadCatalogs()
@@ -86,6 +138,28 @@ const ServiceCatalogs = () => {
       }
     } catch (error) {
       message.error(editingCatalog ? 'Cập nhật thất bại!' : 'Tạo mới thất bại!')
+    }
+  }
+
+  const handleFilterChange = (key, value) => {
+    setFilters({ ...filters, [key]: value })
+    setPagination({ ...pagination, current: 1 })
+  }
+
+  const handleTableChange = (pagination, tableFilters, sorter) => {
+    setPagination({
+      current: pagination.current,
+      pageSize: pagination.pageSize,
+      total: pagination.total,
+    })
+    
+    if (sorter.field && sorter.order) {
+      setSortBy(sorter.field)
+      setSortDirection(sorter.order === 'ascend' ? 'asc' : 'desc')
+    } else {
+      // Reset sorting when user clears sort
+      setSortBy(null)
+      setSortDirection(null)
     }
   }
 
@@ -154,11 +228,68 @@ const ServiceCatalogs = () => {
         </Button>
       </div>
 
+      <div style={{ marginBottom: 16, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        <Input
+          placeholder="Search by name"
+          style={{ width: 200 }}
+          value={filters.name}
+          onChange={(e) => handleFilterChange('name', e.target.value)}
+          allowClear
+        />
+        <Select
+          placeholder="Filter by Active"
+          style={{ width: 150 }}
+          allowClear
+          value={filters.isActive}
+          onChange={(value) => handleFilterChange('isActive', value)}
+        >
+          <Select.Option value={true}>Active</Select.Option>
+          <Select.Option value={false}>Inactive</Select.Option>
+        </Select>
+        <InputNumber
+          placeholder="Min Platform Fee %"
+          style={{ width: 150 }}
+          min={0}
+          max={100}
+          value={filters.minPlatformFeePercent}
+          onChange={(value) => handleFilterChange('minPlatformFeePercent', value)}
+        />
+        <InputNumber
+          placeholder="Max Platform Fee %"
+          style={{ width: 150 }}
+          min={0}
+          max={100}
+          value={filters.maxPlatformFeePercent}
+          onChange={(value) => handleFilterChange('maxPlatformFeePercent', value)}
+        />
+        <RangePicker
+          onChange={(dates) => {
+            handleFilterChange('createdFrom', dates?.[0])
+            handleFilterChange('createdTo', dates?.[1])
+          }}
+        />
+        <Button onClick={() => {
+          setFilters({
+            name: undefined,
+            isActive: undefined,
+            minPlatformFeePercent: undefined,
+            maxPlatformFeePercent: undefined,
+            createdFrom: undefined,
+            createdTo: undefined,
+          })
+          setPagination({ ...pagination, current: 1 })
+        }}>
+          Clear Filters
+        </Button>
+      </div>
+
       <Table
         dataSource={catalogs}
         columns={columns}
         rowKey="id"
         loading={loading}
+        pagination={pagination}
+        onChange={handleTableChange}
       />
 
       <Modal

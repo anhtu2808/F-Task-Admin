@@ -9,6 +9,7 @@ import {
   DollarOutlined,
   EnvironmentOutlined,
   BellOutlined,
+  UserOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 
@@ -43,6 +44,11 @@ const Sidebar = () => {
       key: '/partners',
       icon: <TeamOutlined />,
       label: 'Partners',
+    },
+    {
+      key: '/users',
+      icon: <UserOutlined />,
+      label: 'Users',
     },
     {
       key: '/reviews',
