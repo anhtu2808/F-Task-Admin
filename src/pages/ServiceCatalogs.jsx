@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Modal, Form, Input, InputNumber, Switch, message, Popconfirm, Space } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Table, Button, Modal, Form, Input, InputNumber, Switch, message, Popconfirm, Space, Drawer, Descriptions } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons'
 import { serviceCatalogService } from '../api/services/serviceCatalogService'
+import ServiceCatalogVariants from '../components/ServiceCatalogVariants'
 
 const ServiceCatalogs = () => {
   const [catalogs, setCatalogs] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
+  const [drawerVisible, setDrawerVisible] = useState(false)
   const [editingCatalog, setEditingCatalog] = useState(null)
+  const [selectedCatalog, setSelectedCatalog] = useState(null)
   const [form] = Form.useForm()
 
   useEffect(() => {
@@ -49,6 +52,18 @@ const ServiceCatalogs = () => {
       }
     } catch (error) {
       message.error('Xóa service catalog thất bại!')
+    }
+  }
+
+  const handleViewDetails = async (catalog) => {
+    try {
+      const response = await serviceCatalogService.getById(catalog.id)
+      if (response.code === 200 && response.result) {
+        setSelectedCatalog(response.result)
+        setDrawerVisible(true)
+      }
+    } catch (error) {
+      message.error('Không thể tải thông tin catalog!')
     }
   }
 
@@ -113,6 +128,9 @@ const ServiceCatalogs = () => {
       key: 'actions',
       render: (_, record) => (
         <Space>
+          <Button icon={<EyeOutlined />} onClick={() => handleViewDetails(record)}>
+            Details
+          </Button>
           <Button icon={<EditOutlined />} onClick={() => handleEdit(record)} />
           <Popconfirm
             title="Bạn có chắc chắn muốn xóa?"
@@ -168,6 +186,43 @@ const ServiceCatalogs = () => {
           </Form.Item>
         </Form>
       </Modal>
+
+      <Drawer
+        title={`Service Catalog: ${selectedCatalog?.name || ''}`}
+        placement="right"
+        size="large"
+        onClose={() => {
+          setDrawerVisible(false)
+          setSelectedCatalog(null)
+        }}
+        open={drawerVisible}
+        width={1200}
+      >
+        {selectedCatalog && (
+          <div>
+            <Descriptions title="Catalog Information" bordered column={1} style={{ marginBottom: 24 }}>
+              <Descriptions.Item label="ID">{selectedCatalog.id}</Descriptions.Item>
+              <Descriptions.Item label="Name">{selectedCatalog.name}</Descriptions.Item>
+              <Descriptions.Item label="Description">{selectedCatalog.description || '-'}</Descriptions.Item>
+              <Descriptions.Item label="Image URL">
+                {selectedCatalog.imageUrl ? (
+                  <a href={selectedCatalog.imageUrl} target="_blank" rel="noopener noreferrer">
+                    {selectedCatalog.imageUrl}
+                  </a>
+                ) : '-'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Platform Fee Percent">{selectedCatalog.platformFeePercent}%</Descriptions.Item>
+              <Descriptions.Item label="Active">{selectedCatalog.isActive ? 'Yes' : 'No'}</Descriptions.Item>
+            </Descriptions>
+
+            <ServiceCatalogVariants
+              catalogId={selectedCatalog.id}
+              catalogName={selectedCatalog.name}
+              onClose={() => setDrawerVisible(false)}
+            />
+          </div>
+        )}
+      </Drawer>
     </div>
   )
 }

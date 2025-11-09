@@ -1,48 +1,35 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Table, Button, Modal, Form, Input, InputNumber, Switch, message, Popconfirm, Space, Select } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import { serviceVariantService } from '../api/services/serviceVariantService'
-import { serviceCatalogService } from '../api/services/serviceCatalogService'
 
-const ServiceVariants = () => {
+const ServiceCatalogVariants = ({ catalogId, catalogName, onClose }) => {
   const [variants, setVariants] = useState([])
-  const [catalogs, setCatalogs] = useState([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
   const [editingVariant, setEditingVariant] = useState(null)
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 })
   const [form] = Form.useForm()
+  const prevCatalogIdRef = useRef(null)
 
-  useEffect(() => {
-    loadCatalogs()
-    loadVariants()
-  }, [])
-
-  const loadCatalogs = async () => {
-    try {
-      const response = await serviceCatalogService.getAll()
-      if (response.code === 200 && response.result) {
-        setCatalogs(response.result)
-      }
-    } catch (error) {
-      console.error('Failed to load catalogs:', error)
-    }
-  }
-
-  const loadVariants = async (page = 1, pageSize = 10) => {
+  const loadVariants = async (page, pageSize) => {
+    if (!catalogId) return
+    
     setLoading(true)
     try {
       const response = await serviceVariantService.getAll({
         page: page,
         size: pageSize,
+        serviceCatalogId: catalogId,
       })
       if (response.code === 200 && response.result) {
         setVariants(response.result.content || [])
-        setPagination({
+        setPagination(prev => ({
+          ...prev,
           current: page,
-          pageSize,
+          pageSize: pageSize,
           total: response.result.totalElements || 0,
-        })
+        }))
       }
     } catch (error) {
       console.error('Failed to load variants:', error)
@@ -51,9 +38,26 @@ const ServiceVariants = () => {
     }
   }
 
+  // Load variants when catalogId changes or pagination changes
+  useEffect(() => {
+    if (catalogId) {
+      const catalogIdChanged = prevCatalogIdRef.current !== catalogId
+      
+      if (catalogIdChanged) {
+        // Reset to page 1 when catalogId changes
+        prevCatalogIdRef.current = catalogId
+        loadVariants(1, 10)
+      } else {
+        // Load with current pagination when only pagination changes
+        loadVariants(pagination.current, pagination.pageSize)
+      }
+    }
+  }, [catalogId, pagination.current, pagination.pageSize])
+
   const handleCreate = () => {
     setEditingVariant(null)
     form.resetFields()
+    form.setFieldsValue({ serviceCatalogId: catalogId })
     setModalVisible(true)
   }
 
@@ -61,7 +65,7 @@ const ServiceVariants = () => {
     setEditingVariant(variant)
     form.setFieldsValue({
       ...variant,
-      serviceCatalogId: variant.serviceCatalog?.id,
+      serviceCatalogId: variant.serviceCatalog?.id || catalogId,
     })
     setModalVisible(true)
   }
@@ -71,7 +75,7 @@ const ServiceVariants = () => {
       const response = await serviceVariantService.delete(id)
       if (response.code === 200 || response.code === 204) {
         message.success('Xóa service variant thành công!')
-        loadVariants(pagination.current, pagination.pageSize)
+        loadVariants()
       }
     } catch (error) {
       message.error('Xóa service variant thất bại!')
@@ -85,14 +89,14 @@ const ServiceVariants = () => {
         if (response.code === 200 || response.code === 302) {
           message.success('Cập nhật service variant thành công!')
           setModalVisible(false)
-          loadVariants(pagination.current, pagination.pageSize)
+          loadVariants()
         }
       } else {
         const response = await serviceVariantService.create(values)
         if (response.code === 201 || response.code === 200) {
           message.success('Tạo service variant thành công!')
           setModalVisible(false)
-          loadVariants(pagination.current, pagination.pageSize)
+          loadVariants()
         }
       }
     } catch (error) {
@@ -100,8 +104,12 @@ const ServiceVariants = () => {
     }
   }
 
-  const handleTableChange = (pagination) => {
-    loadVariants(pagination.current, pagination.pageSize)
+  const handleTableChange = (newPagination) => {
+    setPagination({
+      ...pagination,
+      current: newPagination.current,
+      pageSize: newPagination.pageSize,
+    })
   }
 
   const columns = [
@@ -119,6 +127,7 @@ const ServiceVariants = () => {
       title: 'Description',
       dataIndex: 'description',
       key: 'description',
+      ellipsis: true,
     },
     {
       title: 'Duration (hours)',
@@ -164,9 +173,9 @@ const ServiceVariants = () => {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1>Service Variants</h1>
+        <h2>Service Variants - {catalogName}</h2>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate}>
-          Create Variant
+          Add Variant
         </Button>
       </div>
 
@@ -194,13 +203,7 @@ const ServiceVariants = () => {
             <Input.TextArea rows={4} />
           </Form.Item>
           <Form.Item name="serviceCatalogId" label="Service Catalog" rules={[{ required: true }]}>
-            <Select>
-              {catalogs.map((catalog) => (
-                <Select.Option key={catalog.id} value={catalog.id}>
-                  {catalog.name}
-                </Select.Option>
-              ))}
-            </Select>
+            <Input disabled value={catalogId} />
           </Form.Item>
           <Form.Item name="durationHours" label="Duration (hours)" rules={[{ required: true }]}>
             <InputNumber min={1} style={{ width: '100%' }} />
@@ -220,5 +223,5 @@ const ServiceVariants = () => {
   )
 }
 
-export default ServiceVariants
+export default ServiceCatalogVariants
 

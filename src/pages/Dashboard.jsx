@@ -21,7 +21,7 @@ const Dashboard = () => {
   const loadData = async () => {
     setLoading(true)
     try {
-      const response = await bookingService.getBookings({ page: 0, size: 10 })
+      const response = await bookingService.getBookings({ page: 1, size: 10 })
       if (response.code === 200 && response.result) {
         const bookings = response.result.content || []
         setRecentBookings(bookings)

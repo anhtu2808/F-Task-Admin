@@ -34,7 +34,7 @@ const Transactions = () => {
     setLoading(true)
     try {
       const params = {
-        page: pagination.current - 1,
+        page: pagination.current,
         size: pagination.pageSize,
         ...filters,
       }
