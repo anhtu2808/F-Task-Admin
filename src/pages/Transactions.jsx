@@ -13,11 +13,22 @@ const Transactions = () => {
     type: undefined,
     status: undefined,
   })
-
+  const [totalFee, setTotalFee] = useState(null)
   useEffect(() => {
-    loadWallet()
+    loadTotalFee()
     loadTransactions()
   }, [pagination.current, pagination.pageSize, filters])
+
+  const loadTotalFee = async () => {
+    try {
+      const response = await transactionService.getTotalFee()
+      if (response.code === 200 && response.result !== undefined) {
+        setTotalFee(response.result)
+      }
+    } catch (error) {
+      console.error('Failed to load total fee:', error)
+    }
+  }
 
   const loadWallet = async () => {
     try {
@@ -38,7 +49,7 @@ const Transactions = () => {
         size: pagination.pageSize,
         ...filters,
       }
-      
+
       const response = await transactionService.getTransactions(params)
       if (response.code === 200 && response.result) {
         setTransactions(response.result.content || [])
@@ -142,18 +153,17 @@ const Transactions = () => {
     <div>
       <h1 style={{ marginBottom: 24 }}>Transactions</h1>
 
-      {wallet && (
+      {totalFee !== null && (
         <Card style={{ marginBottom: 24 }}>
           <Statistic
-            title="Current Wallet Balance"
-            value={wallet.balance}
+            title="Total Platform Fee"
+            value={totalFee}
             prefix={<DollarOutlined />}
             suffix="VNĐ"
             formatter={(value) => value.toLocaleString('vi-VN')}
           />
         </Card>
       )}
-
       <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
         <Select
           placeholder="Filter by Type"

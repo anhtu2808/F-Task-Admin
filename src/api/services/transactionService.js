@@ -2,12 +2,12 @@ import api from '../axios'
 
 export const transactionService = {
   getTransactions: async (params = {}) => {
-    const response = await api.get('/users/transactions', { params })
+    const response = await api.get('/admin/transactions', { params }) // ✅ sửa đường dẫn
     return response.data
   },
 
-  getWallet: async () => {
-    const response = await api.get('/users/wallet')
+  getTotalFee: async () => { // 👈 thêm hàm mới
+    const response = await api.get('/admin/transactions/total-fee')
     return response.data
   },
 }

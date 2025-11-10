@@ -351,13 +351,6 @@ const Bookings = () => {
             handleFilterChange('startDateTo', dates?.[1])
           }}
         />
-        <RangePicker
-          placeholder={['Created From', 'Created To']}
-          onChange={(dates) => {
-            handleFilterChange('createdFrom', dates?.[0])
-            handleFilterChange('createdTo', dates?.[1])
-          }}
-        />
         <Button onClick={() => {
           setFilters({
             status: undefined,
@@ -370,8 +363,6 @@ const Bookings = () => {
             serviceName: undefined,
             startDateFrom: undefined,
             startDateTo: undefined,
-            createdFrom: undefined,
-            createdTo: undefined,
             minPrice: undefined,
             maxPrice: undefined,
             district: undefined,

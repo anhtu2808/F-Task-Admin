@@ -2,7 +2,14 @@ import api from '../axios'
 
 export const adminBookingService = {
   getAllBookings: async (params = {}) => {
-    const response = await api.get('/admin/bookings', { params })
+    // 👇 Gán mặc định nếu chưa có orderBy/sortDirection
+    const defaultParams = {
+      sortBy: params.sortBy || 'startAt',
+      sortDirection: params.sortDirection || 'desc',
+      ...params,
+    }
+
+    const response = await api.get('/admin/bookings', { params: defaultParams })
     return response.data
   },
 

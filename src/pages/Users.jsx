@@ -1,5 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Modal, Form, Input, Select, DatePicker, message, Space, Tag, Descriptions, Drawer } from 'antd'
+import { 
+  Table, 
+  Button, 
+  Modal, 
+  Form, 
+  Input, 
+  Select, 
+  DatePicker, 
+  message, 
+  Space, 
+  Tag, 
+  Descriptions, 
+  Drawer, 
+  InputNumber // 👈 thêm dòng này
+} from 'antd'
 import { EyeOutlined, EditOutlined, UserOutlined } from '@ant-design/icons'
 import { adminUserService } from '../api/services/adminUserService'
 import dayjs from 'dayjs'
