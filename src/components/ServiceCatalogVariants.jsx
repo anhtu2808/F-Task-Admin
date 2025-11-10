@@ -14,7 +14,7 @@ const ServiceCatalogVariants = ({ catalogId, catalogName, onClose }) => {
 
   const loadVariants = async (page, pageSize) => {
     if (!catalogId) return
-    
+
     setLoading(true)
     try {
       const response = await serviceVariantService.getAll({
@@ -42,7 +42,7 @@ const ServiceCatalogVariants = ({ catalogId, catalogName, onClose }) => {
   useEffect(() => {
     if (catalogId) {
       const catalogIdChanged = prevCatalogIdRef.current !== catalogId
-      
+
       if (catalogIdChanged) {
         // Reset to page 1 when catalogId changes
         prevCatalogIdRef.current = catalogId
@@ -57,7 +57,7 @@ const ServiceCatalogVariants = ({ catalogId, catalogName, onClose }) => {
   const handleCreate = () => {
     setEditingVariant(null)
     form.resetFields()
-    form.setFieldsValue({ serviceCatalogId: catalogId })
+    form.setFieldsValue({ serviceCatalogId: catalogId, isMultiPartner: false })
     setModalVisible(true)
   }
 
@@ -72,20 +72,21 @@ const ServiceCatalogVariants = ({ catalogId, catalogName, onClose }) => {
 
   const handleDelete = async (id) => {
     try {
-      const response = await serviceVariantService.delete(id)
+      const response = await serviceVariantService.delete(id);
       if (response.code === 200 || response.code === 204) {
-        message.success('Xóa service variant thành công!')
-        loadVariants()
+        message.success('Xóa service variant thành công!');
+        loadVariants();
       }
     } catch (error) {
-      message.error('Xóa service variant thất bại!')
+      message.error('Xóa service variant thất bại!');
     }
-  }
+  };
 
   const handleSubmit = async (values) => {
     try {
       if (editingVariant) {
         const response = await serviceVariantService.update(editingVariant.id, values)
+        console.log(response)
         if (response.code === 200 || response.code === 302) {
           message.success('Cập nhật service variant thành công!')
           setModalVisible(false)
@@ -211,7 +212,7 @@ const ServiceCatalogVariants = ({ catalogId, catalogName, onClose }) => {
           <Form.Item name="pricePerVariant" label="Price" rules={[{ required: true }]}>
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="isMultiPartner" label="Multi Partner" valuePropName="checked">
+          <Form.Item name="isMultiPartner" label="Multi Partner" valuePropName="checked" initialValue={false} >
             <Switch />
           </Form.Item>
           <Form.Item name="numberOfPartners" label="Number of Partners" rules={[{ required: true }]}>
