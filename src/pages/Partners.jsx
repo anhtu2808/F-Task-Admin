@@ -53,7 +53,7 @@ const Partners = () => {
     setLoading(true)
     try {
       const params = {
-        page: pagination.current,
+        page: pagination.current - 1, // ✅ gửi 0-based page index cho Spring Boot
         size: pagination.pageSize,
       }
       
@@ -122,7 +122,7 @@ const Partners = () => {
 
   const loadPartnerBookings = async (id) => {
     try {
-      const response = await adminPartnerService.getPartnerBookings(id, { page: 1, size: 10 })
+      const response = await adminPartnerService.getPartnerBookings(id, { page: 0, size: 10 })
       if (response.code === 200 && response.result) {
         setPartnerBookings(response.result.content || [])
       }
